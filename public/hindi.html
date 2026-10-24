@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IND vs NZ - T20 cricket match (Hindi)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css" crossorigin="anonymous">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      background: #000;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .shaka-video-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      object-fit: contain;
+    }
+    .shaka-spinner-container, .shaka-spinner, .shaka-spinner-svg {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+
+    /* Screen Touch Refresh Button (Screen touch / hover par hi dikhega) */
+    .stream-refresh-btn {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 100;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    }
+    .stream-refresh-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .stream-refresh-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      transform: scale(1.08);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    .stream-refresh-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+    .stream-refresh-btn.spinning svg {
+      animation: spinRefresh 0.8s linear infinite;
+    }
+    @keyframes spinRefresh {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .toast-msg {
+      position: absolute;
+      top: 68px;
+      right: 18px;
+      z-index: 101;
+      background: rgba(0, 0, 0, 0.85);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 500;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: all 0.25s ease;
+    }
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="shaka-video-container" id="playerContainer" data-shaka-player>
+    <!-- Screen Touch Refresh Icon -->
+    <button class="stream-refresh-btn" id="refreshBtn" title="Refresh Stream" aria-label="Refresh Stream">
+      <svg viewBox="0 0 24 24">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.6L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+    </button>
+    <div class="toast-msg" id="toastMsg">Stream Refreshed ⚡</div>
+
+    <video id="videoElement" autoplay playsinline preload="metadata" poster="https://w0.peakpx.com/wallpaper/183/933/HD-wallpaper-fifa-world-cup-26-u-sports-soccer-mexico-canada-football-fifa-world-cup-world-cup-20.jpg"></video>
+  </div>
+
+  <script>
+    // ============================================================
+    // HINDI STREAM CONFIGURATION (यहाँ लिंक और कीज़ बदलें)
+    // ============================================================
+    const streamUrl = "paste link";
+    const drmConfig = {
+      clearKeys: {
+        "key1": "key2"
+      }
+    };
+    // ============================================================
+
+    let playerInstance = null;
+    let hideControlsTimeout = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const blockExternalAds = () => {
+        const originalOpen = window.open;
+        window.open = function () {
+          console.warn('Blocked popup request');
+          return null;
+        };
+        document.addEventListener('contextmenu', (event) => { event.preventDefault(); }, { passive: false });
+        document.addEventListener('click', (event) => {
+          const target = event.target;
+          const anchor = target && target.closest ? target.closest('a') : null;
+          if (anchor) { event.preventDefault(); event.stopPropagation(); }
+        }, true);
+        document.addEventListener('touchstart', (event) => {
+          const target = event.target;
+          const anchor = target && target.closest ? target.closest('a') : null;
+          if (anchor) { event.preventDefault(); event.stopPropagation(); }
+        }, { passive: false });
+        document.addEventListener('touchend', (event) => {
+          const target = event.target;
+          const anchor = target && target.closest ? target.closest('a') : null;
+          if (anchor) { event.preventDefault(); event.stopPropagation(); }
+        }, { passive: false });
+      };
+      blockExternalAds();
+
+      // Screen Touch / Hover controls
+      const container = document.getElementById('playerContainer');
+      const refreshBtn = document.getElementById('refreshBtn');
+      const toastMsg = document.getElementById('toastMsg');
+
+      const showOverlayControls = () => {
+        refreshBtn.classList.add('visible');
+        clearTimeout(hideControlsTimeout);
+        hideControlsTimeout = setTimeout(() => {
+          refreshBtn.classList.remove('visible');
+        }, 3200);
+      };
+
+      container.addEventListener('touchstart', showOverlayControls, { passive: true });
+      container.addEventListener('mousemove', showOverlayControls, { passive: true });
+      container.addEventListener('click', showOverlayControls, { passive: true });
+
+      // Refresh button
+      refreshBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        refreshBtn.classList.add('spinning');
+        toastMsg.textContent = "Refreshing Stream...";
+        toastMsg.classList.add('show');
+        try {
+          if (playerInstance && streamUrl && streamUrl !== "paste link") {
+            await playerInstance.load(streamUrl);
+          } else {
+            const video = document.getElementById('videoElement');
+            video.load();
+            video.play().catch(() => {});
+          }
+          toastMsg.textContent = "Stream Refreshed ⚡";
+        } catch (err) {
+          toastMsg.textContent = "Refreshed!";
+        } finally {
+          setTimeout(() => refreshBtn.classList.remove('spinning'), 600);
+          setTimeout(() => toastMsg.classList.remove('show'), 2000);
+        }
+      });
+
+      shaka.polyfill.installAll();
+      if (!shaka.Player.isBrowserSupported()) {
+        console.error('Browser not supported');
+        return;
+      }
+
+      const video = document.getElementById('videoElement');
+      const player = new shaka.Player();
+      playerInstance = player;
+      await player.attach(video);
+
+      const ui = new shaka.ui.Overlay(player, container, video);
+      ui.configure({
+        controlPanelElements: [
+          'play_pause',
+          'time_and_duration',
+          'mute',
+          'volume',
+          'spacer',
+          'language',
+          'captions',
+          'picture_in_picture',
+          'quality',
+          'fullscreen'
+        ],
+        volumeBarColors: {
+          base: 'rgba(0, 136, 255, 0.3)',
+          level: 'rgb(0, 136, 255)'
+        },
+        seekBarColors: {
+          base: 'rgba(90, 0, 0, 0.3)',
+          buffered: 'rgba(120, 0, 0, 0.6)',
+          played: 'rgb(170, 0, 0)'
+        }
+      });
+
+      player.configure({
+        drm: drmConfig,
+        streaming: {
+          lowLatencyMode: true,
+          bufferingGoal: 15,
+          rebufferingGoal: 2,
+          bufferBehind: 15,
+          retryParameters: { timeout: 10000, maxAttempts: 5, baseDelay: 300, backoffFactor: 1.2 },
+          segmentRequestTimeout: 8000,
+          segmentPrefetchLimit: 2,
+          useNativeHlsOnSafari: true
+        },
+        manifest: {
+          retryParameters: { timeout: 8000, maxAttempts: 3 }
+        }
+      });
+
+      player.addEventListener('error', (event) => {
+        console.error('Shaka Player Error:', event.detail);
+      });
+
+      if (streamUrl && streamUrl !== "paste link") {
+        try {
+          await player.load(streamUrl);
+          console.log("Hindi Stream loaded successfully");
+        } catch (error) {
+          console.error('Load error:', error);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

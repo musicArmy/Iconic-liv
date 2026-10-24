@@ -1,0 +1,6 @@
+{
+  "name": "Live Match Stream Studio",
+  "description": "Live match streaming hub with Team VS Team match banner, YouTube thumbnail uploader, Hindi/English/Willow multi-stream player with quick touch-refresh control, and customizable stream code.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

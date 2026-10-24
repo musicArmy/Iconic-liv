@@ -1,0 +1,40 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/hindi.html",
+      "destination": "/hindi.html"
+    },
+    {
+      "source": "/english.html",
+      "destination": "/english.html"
+    },
+    {
+      "source": "/willow.html",
+      "destination": "/willow.html"
+    },
+    {
+      "source": "/((?!assets/|hindi\\.html|english\\.html|willow\\.html).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
